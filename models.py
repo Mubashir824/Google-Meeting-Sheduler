@@ -56,19 +56,38 @@ def next_question(state: dict):
     return None
 # ---------------- GOOGLE CALENDAR ---------------- #
 
+import os
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+
 def google_calendar_service():
-    creds = None
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-    if not creds or not creds.valid:
-        flow = InstalledAppFlow.from_client_secrets_file(
-            'client_secret.json', SCOPES)
-        creds = flow.run_local_server(port=0)
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
+    # 1. Define the scopes (must match what you used to generate the token)
+    SCOPES = ['https://www.googleapis.com/auth/calendar.events']
 
+    # 2. Reconstruct the credentials from Azure Environment Variables
+    # These names must match the "Name" column in your Azure App Settings
+    creds_data = {
+        "token": os.getenv("token"),
+        "refresh_token": os.getenv("refresh_token"),
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "client_id": os.getenv("client_id"),
+        "client_secret": os.getenv("client_secret"),
+        "scopes": SCOPES,
+        "universe_domain": "googleapis.com"
+    }
+
+    # 3. Create the credentials object
+    # This replaces Credentials.from_authorized_user_file('token.json')
+    creds = Credentials.from_authorized_user_info(creds_data, SCOPES)
+
+    # 4. (Optional) Auto-refresh the token if it has expired
+    if creds and creds.expired and creds.refresh_token:
+        from google.auth.transport.requests import Request
+        creds.refresh(Request())
+
+    # 5. Build and return the service
     return build('calendar', 'v3', credentials=creds)
-
+    
 # ---------------- LOGIC ---------------- #
 
 
@@ -304,4 +323,5 @@ def process_user_audio(file_path: str):
         return prepare_confirmation()
 
     # Safety fallback
+
     return prepare_confirmation()
