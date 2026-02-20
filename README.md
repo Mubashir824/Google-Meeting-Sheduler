@@ -68,7 +68,7 @@ Deployment: - Render / Railway / Cloud VM (update accordingly)
 
 Clone repository:
 
-    git clone https://github.com/your-username/voice-scheduling-agent.git
+    git clone https://github.com/Mubashir824/voice-scheduling-agent.git
     cd voice-scheduling-agent
 
 Install dependencies:
