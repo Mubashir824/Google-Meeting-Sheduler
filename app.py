@@ -6,7 +6,7 @@ from fastapi import Request
 import shutil
 import os
 
-from models import create_new_session, process_user_audio  
+from models import  process_user_audio  
 app = FastAPI()
 
 # Allow frontend requests
@@ -34,24 +34,22 @@ async def home(request: Request):
 
 #  Main API
 @app.post("/schedule_meeting")
-async def schedule(file: UploadFile = File(...), session_id: str = None):
+async def schedule(file: UploadFile = File(...)):
     global latest_link
 
-    if not session_id:
-        # If no session_id provided, create a new one
-        session_id = create_new_session()
-
     file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    result = process_user_audio(file_path, session_id)
+    result = process_user_audio(file_path)
 
     if result.get("status") == "completed":
         latest_link = result["calendar_link"]
 
-    # Return session_id so frontend can keep track
-    return {"session_id": session_id, **result}
+    return result
+
+
 
 
 @app.get("/success")
@@ -63,5 +61,6 @@ def success():
         }
 
     return {"status": "no meeting scheduled"}
+
 
 
