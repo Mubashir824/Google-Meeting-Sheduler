@@ -1,7 +1,7 @@
 
 import os
 from elevenlabs import ElevenLabs
-
+import re
 import json
 import re
 from datetime import datetime, timedelta
@@ -286,20 +286,34 @@ def process_user_audio(file_path: str):
         reset_conversation()
     user_text = transcribe_audio(file_path).strip().lower()
     print("User said:", user_text)
-
-    # If waiting for confirmation (yes/no)
+    
     if conversation_state.get("awaiting_confirmation"):
         clean = user_text.strip().lower()
-        print("Confirmation response:", clean)
-
-        if clean.startswith("yes"):
+        print("Confirmation response:", repr(clean))
+    
+        # If nothing detected → treat as YES
+        if not clean:
+            print("No text detected → Defaulting to YES")
             return schedule_confirmed_meeting()
-        elif clean.startswith("no"):
+    
+        # Remove punctuation
+        clean = re.sub(r"[^\w\s]", "", clean)
+    
+        yes_words = ["yes", "yeah", "yep", "confirm", "correct", "sure", "ok", "okay"]
+        no_words = ["no", "nope", "cancel", "restart"]
+    
+        if any(word in clean for word in yes_words):
+            return schedule_confirmed_meeting()
+    
+        elif any(word in clean for word in no_words):
             reset_conversation()
             return {"status": "restart", "next_question": questions[0]}
-        else:
-            return {"status": "confirm", "message": "Please say yes to confirm or no to restart."}
+    
+        # If unclear → default to YES
+        print("Unclear response → Defaulting to YES")
+        return schedule_confirmed_meeting()
 
+        
     # Step-by-step state filling
     if conversation_state["name"] is None:
         conversation_state["name"] = user_text
