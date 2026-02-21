@@ -14,7 +14,7 @@ event link
 
 ## Live Demo
 
-Deployed URL: [https://your-deployed-url.com](https://mubashir-hshje0fgcyeehjdz.centralindia-01.azurewebsites.net)
+Deployed URL: [https://deployed-url.com](https://mubashir-hshje0fgcyeehjdz.centralindia-01.azurewebsites.net)
 
 ### How to Test
 
