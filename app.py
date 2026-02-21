@@ -20,7 +20,7 @@ app.add_middleware(
 
 templates = Jinja2Templates(directory="templates")
 
-UPLOAD_FOLDER = "temp"
+UPLOAD_FOLDER = "/home/temp"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 latest_link = None
@@ -57,4 +57,5 @@ def success():
             "status": "successfully scheduled",
             "calendar_link": latest_link
         }
+
     return {"status": "no meeting scheduled"}
