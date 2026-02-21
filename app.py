@@ -26,28 +26,32 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 latest_link = None
 
 
-# ✅ Serve Frontend
+# Serve Frontend
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-# ✅ Main API
+#  Main API
 @app.post("/schedule_meeting")
-async def schedule(file: UploadFile = File(...)):
+async def schedule(file: UploadFile = File(...), session_id: str = None):
     global latest_link
 
-    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+    if not session_id:
+        # If no session_id provided, create a new one
+        session_id = create_new_session()
 
+    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    result = process_user_audio(file_path)
+    result = process_user_audio(file_path, session_id)
 
     if result.get("status") == "completed":
         latest_link = result["calendar_link"]
 
-    return result
+    # Return session_id so frontend can keep track
+    return {"session_id": session_id, **result}
 
 
 @app.get("/success")
@@ -59,3 +63,4 @@ def success():
         }
 
     return {"status": "no meeting scheduled"}
+
