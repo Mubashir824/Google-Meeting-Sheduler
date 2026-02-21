@@ -23,7 +23,7 @@ print("Loaded API KEY:", api_key)  # Temporary debug
 client = genai.Client(api_key=api_key)
 
 
-stt_model = whisper.load_model("large", device="cpu")
+stt_model = whisper.load_model("base", device="cpu")
 
 SCOPES = ['https://www.googleapis.com/auth/calendar.events']
 
@@ -325,3 +325,4 @@ def process_user_audio(file_path: str):
     # Safety fallback
 
     return prepare_confirmation()
+
