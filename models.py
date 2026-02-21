@@ -321,6 +321,7 @@ def finalize_and_schedule():
 # ---------------- MAIN STEP FUNCTION ---------------- #
 
 def process_user_audio(file_path: str):
+    conversation_state = get_session(session_id)
     # If conversation finished previously, reset automatically
     if conversation_state.get("confirmed"):
         reset_conversation()
@@ -374,6 +375,7 @@ def process_user_audio(file_path: str):
     # Safety fallback
 
     return prepare_confirmation()
+
 
 
 
