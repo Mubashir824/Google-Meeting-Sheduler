@@ -144,7 +144,7 @@ def parse_with_gemini(full_text: str):
         }}
     """
     response = client.models.generate_content(
-        model="gemini-1.5-flash",
+        model="models/gemini-2.5-flash",
         contents=prompt
     )
     raw = re.sub(r"```json|```", "", response.text).strip()
@@ -325,5 +325,6 @@ def process_user_audio(file_path: str):
     # Safety fallback
 
     return prepare_confirmation()
+
 
 
