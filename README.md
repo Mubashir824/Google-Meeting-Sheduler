@@ -93,6 +93,4 @@ templates/index.html \# Voice interface temp/ \# Temporary audio storage
 ------------------------------------------------------------------------
 
 ## Demo Evidence
-
-Include: - Screenshot of interaction - Screenshot of confirmation -
-Screenshot of created calendar event - Loom demo link
+https://www.loom.com/share/f101c0e2898c42a88321b032bf7c291d
