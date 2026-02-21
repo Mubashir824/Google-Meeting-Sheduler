@@ -1,4 +1,12 @@
 
+
+
+
+
+
+
+
+
 import os
 from elevenlabs import ElevenLabs
 import re
@@ -148,82 +156,68 @@ import uuid
 # Store all sessions keyed by session_id
 conversation_sessions = {}
 
-def create_new_session():
-    session_id = str(uuid.uuid4())
-    conversation_sessions[session_id] = {
-        "name": None,
-        "date": None,
-        "time": None,
-        "title": None,
-        "awaiting_confirmation": False,
-        "confirmed": False,
-        "calendar_link": None,
-    }
-    return session_id
 
-def get_session(session_id):
-    if session_id not in conversation_sessions:
-        conversation_sessions[session_id] = {
-            "name": None,
-            "date": None,
-            "time": None,
-            "title": None,
-            "awaiting_confirmation": False,
-            "confirmed": False,
-            "calendar_link": None,
-        }
-    return conversation_sessions[session_id]
 
-def reset_conversation(session_id):
-    if session_id in conversation_sessions:
-        conversation_sessions[session_id] = {
-            "name": None,
-            "date": None,
-            "time": None,
-            "title": None,
-            "awaiting_confirmation": False,
-            "confirmed": False,
-            "calendar_link": None,
-        }
-        
 def convert_to_iso(date_str, time_str):
     dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
     return dt.isoformat()
 
-
 def create_calendar_event(summary, start_iso):
     service = google_calendar_service()
     end_dt = datetime.fromisoformat(start_iso) + timedelta(hours=1)
+
     event_body = {
         "summary": summary,
         "start": {"dateTime": start_iso, "timeZone": "UTC"},
         "end": {"dateTime": end_dt.isoformat(), "timeZone": "UTC"},
     }
+
     event = service.events().insert(
         calendarId='primary',
         body=event_body
     ).execute()
+
     return event["htmlLink"]
 
+def reset_conversation():
+    conversation_state["name"] = None
+    conversation_state["date"] = None
+    conversation_state["time"] = None
+    conversation_state["title"] = None
+    conversation_state["confirmed"] = False
+    conversation_state["calendar_link"] = None
+    conversation_state["awaiting_confirmation"] = False
+    conversation_state.pop("parsed_data", None)
+    
+def prepare_confirmation():
 
-def prepare_confirmation(session_id):
-    conversation_state = get_session(session_id)
     combined = (
         f"Name: {conversation_state['name']}. "
         f"Date: {conversation_state['date']}. "
         f"Time: {conversation_state['time']}. "
         f"Title: {conversation_state['title']}."
     )
+
+    print("\n========== DEBUG START ==========")
+    print("Combined Text Sent To Gemini:")
+    print(combined)
+
     parsed = parse_with_gemini(combined)
+
+    print("Gemini Parsed Output:", parsed)
+    print("========== DEBUG END ==========\n")
+
     if not parsed.get("date") or not parsed.get("time"):
-        reset_conversation(session_id)
+        reset_conversation()
         return {
             "status": "error",
             "message": "I could not understand the date or time. Restarting.",
             "next_question": questions[0]
         }
+
     conversation_state["parsed_data"] = parsed
     conversation_state["awaiting_confirmation"] = True
+
     summary = (
         f"Please confirm your meeting details. "
         f"Name: {parsed['name']}, "
@@ -232,38 +226,47 @@ def prepare_confirmation(session_id):
         f"Title: {parsed['title']}. "
         f"Say yes to confirm or no to restart."
     )
-    return {"status": "confirm", "message": summary}
 
-    
-def schedule_confirmed_meeting(session_id):
-    conversation_state = get_session(session_id)
+    return {
+        "status": "confirm",
+        "message": summary
+    }
+def schedule_confirmed_meeting():
+
     parsed = conversation_state["parsed_data"]
+
     iso_time = convert_to_iso(parsed["date"], parsed["time"])
     title = parsed.get("title") or "Meeting"
+
     link = create_calendar_event(title, iso_time)
+
     conversation_state["confirmed"] = True
     conversation_state["calendar_link"] = link
     conversation_state["awaiting_confirmation"] = False
+
     return {
         "status": "completed",
         "calendar_link": link
-    }  
-
-    
+    }    
 def finalize_and_schedule():
+
     combined = (
         f"Name: {conversation_state['name']}. "
         f"Date: {conversation_state['date']}. "
         f"Time: {conversation_state['time']}. "
         f"Title: {conversation_state['title']}."
     )
+
     print("\n========== DEBUG START ==========")
     print("Combined Text Sent To Gemini:")
     print(combined)
+
     parsed = parse_with_gemini(combined)
+
     print("\nGemini Parsed Output:")
     print(parsed)
     print("========== DEBUG END ==========\n")
+
     # Validation
     if not parsed.get("date") or not parsed.get("time"):
         print("❌ Date or Time Missing After Gemini Parsing")
@@ -273,68 +276,88 @@ def finalize_and_schedule():
             "restart": True,
             "next_question": questions[0]
         }
+
     iso_time = convert_to_iso(parsed["date"], parsed["time"])
+
     title = parsed.get("title") or "Meeting"
+
     link = create_calendar_event(title, iso_time)
+
     conversation_state["confirmed"] = True
     conversation_state["calendar_link"] = link
+
     return {
         "status": "completed",
         "calendar_link": link,
         "details": parsed
     }
-
-    
 # ---------------- MAIN STEP FUNCTION ---------------- #
-def process_user_audio(file_path: str, session_id: str):
-    conversation_state = get_session(session_id)
 
-    # Reset if already confirmed
+def process_user_audio(file_path: str):
+   
+    # If conversation finished previously, reset automatically
     if conversation_state.get("confirmed"):
-        reset_conversation(session_id)
-        conversation_state = get_session(session_id)
-
-    # Transcribe audio
+        reset_conversation()
     user_text = transcribe_audio(file_path).strip().lower()
-
-    # Handle confirmation
+    print("User said:", user_text)
+    
     if conversation_state.get("awaiting_confirmation"):
-        clean = re.sub(r"[^\w\s]", "", user_text)
+        clean = user_text.strip().lower()
+        print("Confirmation response:", repr(clean))
+    
+        # If nothing detected → treat as YES
+        if not clean:
+            print("No text detected → Defaulting to YES")
+            return schedule_confirmed_meeting()
+    
+        # Remove punctuation
+        clean = re.sub(r"[^\w\s]", "", clean)
+    
         yes_words = ["yes", "yeah", "yep", "confirm", "correct", "sure", "ok", "okay"]
         no_words = ["no", "nope", "cancel", "restart"]
-
+    
         if any(word in clean for word in yes_words):
-            result = schedule_confirmed_meeting(session_id)
+            return schedule_confirmed_meeting()
+    
         elif any(word in clean for word in no_words):
-            reset_conversation(session_id)
-            result = {"status": "restart", "next_question": questions[0]}
-        else:
-            result = schedule_confirmed_meeting(session_id)
+            reset_conversation()
+            return {"status": "restart", "next_question": questions[0]}
+    
+        # If unclear → default to YES
+        print("Unclear response → Defaulting to YES")
+        return schedule_confirmed_meeting()
 
-        # Save updated state back
-        conversation_sessions[session_id] = get_session(session_id)
-        return {"session_id": session_id, **result}
-
-    # Normal conversation flow
+        
+    # Step-by-step state filling
     if conversation_state["name"] is None:
         conversation_state["name"] = user_text
+        return {"status": "in_progress", "next_question": questions[1]}
+
     elif conversation_state["date"] is None:
         conversation_state["date"] = user_text
+        return {"status": "in_progress", "next_question": questions[2]}
+
     elif conversation_state["time"] is None:
         conversation_state["time"] = user_text
+        return {"status": "in_progress", "next_question": questions[3]}
+
     elif conversation_state["title"] is None:
         conversation_state["title"] = user_text or "Meeting"
+        return prepare_confirmation()
 
-    # Save updated state
-    conversation_sessions[session_id] = conversation_state
+    # Safety fallback
 
-    # Check if we can prepare confirmation
-    if conversation_state["title"] is not None:
-        return {"session_id": session_id, **prepare_confirmation(session_id)}
+    return prepare_confirmation()
 
-    # Otherwise, ask the next question
-    next_q = next_question(conversation_state)
-    return {"status": "in_progress", "next_question": next_q, "session_id": session_id}
+
+
+
+
+
+
+
+
+
 
 
 
