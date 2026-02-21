@@ -5,8 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Request
 import shutil
 import os
-from models import process_user_audio
 
+from models import create_new_session, process_user_audio  
 app = FastAPI()
 
 # Allow frontend requests
@@ -63,4 +63,5 @@ def success():
         }
 
     return {"status": "no meeting scheduled"}
+
 
