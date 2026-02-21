@@ -31,7 +31,7 @@ Deployed URL: [https://deployed-url.com](https://mubashir-hshje0fgcyeehjdz.centr
 
 Frontend: - HTML - JavaScript (MediaRecorder API, SpeechSynthesis API)
 
-Backend: - Python - FastAPI - Whisper (Speech-to-Text)
+Backend: - Python - FastAPI - ElevenLab
 
 Integration: - Google Calendar API - OAuth 2.0 Authentication
 
