@@ -14,7 +14,7 @@ event link
 
 ## Live Demo
 
-Deployed URL: https://your-deployed-url.com
+Deployed URL: [https://your-deployed-url.com](https://mubashir-hshje0fgcyeehjdz.centralindia-01.azurewebsites.net)
 
 ### How to Test
 
@@ -68,8 +68,8 @@ Deployment: - Render / Railway / Cloud VM (update accordingly)
 
 Clone repository:
 
-    git clone https://github.com/Mubashir824/voice-scheduling-agent.git
-    cd voice-scheduling-agent
+    git clone https://github.com/Mubashir824/Google-Meeting-Sheduler.git
+    cd Google-Meeting-Sheduler
 
 Install dependencies:
 
@@ -77,8 +77,8 @@ Install dependencies:
 
 Run server:
 
-    uvicorn app:app --reload
-
+    uvicorn app:app
+    
 Open in browser:
 
     http://127.0.0.1:8000
