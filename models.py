@@ -58,7 +58,6 @@ def next_question(state: dict):
     return None
 # ---------------- GOOGLE CALENDAR ---------------- #
 
-import os
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
@@ -144,7 +143,48 @@ def parse_with_gemini(full_text: str):
     )
     raw = re.sub(r"```json|```", "", response.text).strip()
     return json.loads(raw)
+import uuid
 
+# Store all sessions keyed by session_id
+conversation_sessions = {}
+
+def create_new_session():
+    session_id = str(uuid.uuid4())
+    conversation_sessions[session_id] = {
+        "name": None,
+        "date": None,
+        "time": None,
+        "title": None,
+        "awaiting_confirmation": False,
+        "confirmed": False,
+        "calendar_link": None,
+    }
+    return session_id
+
+def get_session(session_id):
+    if session_id not in conversation_sessions:
+        conversation_sessions[session_id] = {
+            "name": None,
+            "date": None,
+            "time": None,
+            "title": None,
+            "awaiting_confirmation": False,
+            "confirmed": False,
+            "calendar_link": None,
+        }
+    return conversation_sessions[session_id]
+
+def reset_conversation(session_id):
+    if session_id in conversation_sessions:
+        conversation_sessions[session_id] = {
+            "name": None,
+            "date": None,
+            "time": None,
+            "title": None,
+            "awaiting_confirmation": False,
+            "confirmed": False,
+            "calendar_link": None,
+        }
 def convert_to_iso(date_str, time_str):
     dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
     return dt.isoformat()
@@ -334,6 +374,7 @@ def process_user_audio(file_path: str):
     # Safety fallback
 
     return prepare_confirmation()
+
 
 
 
