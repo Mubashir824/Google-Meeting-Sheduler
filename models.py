@@ -288,32 +288,54 @@ def finalize_and_schedule():
 # ---------------- MAIN STEP FUNCTION ---------------- #
 def process_user_audio(file_path: str, session_id: str):
     conversation_state = get_session(session_id)
+
+    # Reset if already confirmed
     if conversation_state.get("confirmed"):
         reset_conversation(session_id)
+        conversation_state = get_session(session_id)
+
+    # Transcribe audio
     user_text = transcribe_audio(file_path).strip().lower()
+
+    # Handle confirmation
     if conversation_state.get("awaiting_confirmation"):
         clean = re.sub(r"[^\w\s]", "", user_text)
         yes_words = ["yes", "yeah", "yep", "confirm", "correct", "sure", "ok", "okay"]
         no_words = ["no", "nope", "cancel", "restart"]
+
         if any(word in clean for word in yes_words):
-            return schedule_confirmed_meeting(session_id)
+            result = schedule_confirmed_meeting(session_id)
         elif any(word in clean for word in no_words):
             reset_conversation(session_id)
-            return {"status": "restart", "next_question": questions[0]}
-        return schedule_confirmed_meeting(session_id)
+            result = {"status": "restart", "next_question": questions[0]}
+        else:
+            result = schedule_confirmed_meeting(session_id)
+
+        # Save updated state back
+        conversation_sessions[session_id] = get_session(session_id)
+        return {"session_id": session_id, **result}
+
+    # Normal conversation flow
     if conversation_state["name"] is None:
         conversation_state["name"] = user_text
-        return {"status": "in_progress", "next_question": questions[1]}
     elif conversation_state["date"] is None:
         conversation_state["date"] = user_text
-        return {"status": "in_progress", "next_question": questions[2]}
     elif conversation_state["time"] is None:
         conversation_state["time"] = user_text
-        return {"status": "in_progress", "next_question": questions[3]}
     elif conversation_state["title"] is None:
         conversation_state["title"] = user_text or "Meeting"
-        return prepare_confirmation(session_id)
-    return prepare_confirmation(session_id)
+
+    # Save updated state
+    conversation_sessions[session_id] = conversation_state
+
+    # Check if we can prepare confirmation
+    if conversation_state["title"] is not None:
+        return {"session_id": session_id, **prepare_confirmation(session_id)}
+
+    # Otherwise, ask the next question
+    next_q = next_question(conversation_state)
+    return {"status": "in_progress", "next_question": next_q, "session_id": session_id}
+
 
 
 
