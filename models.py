@@ -1,5 +1,7 @@
+
 import os
-import whisper
+from elevenlabs import ElevenLabs
+
 import json
 import re
 from datetime import datetime, timedelta
@@ -13,17 +15,22 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 import os
 from dotenv import load_dotenv
 from google import genai
-
 load_dotenv()  # MUST be before getenv()
 
 api_key = os.getenv("GEMINI_API_KEY")
 
+if not api_key:
+    raise ValueError("GEMINI_API_KEY not found. Check your .env file.")
+
+
+
+
 print("Loaded API KEY:", api_key)  # Temporary debug
 
 client = genai.Client(api_key=api_key)
+ElevenLab = ElevenLabs(api_key=os.getenv("ELEVENLAB_API_KEY"))
 
 
-stt_model = whisper.load_model("base", device="cpu")
 
 SCOPES = ['https://www.googleapis.com/auth/calendar.events']
 
@@ -41,7 +48,7 @@ questions = [
     "What is your name?",
     "What date would you like to schedule the meeting?",
     "What time?",
-    "Do you want to give a title for the meeting? (optional)"
+    "Do you want to give a title for the meeting?"
 ]
 
 def next_question(state: dict):
@@ -94,23 +101,16 @@ def google_calendar_service():
 import subprocess
 
 def transcribe_audio(file_path):
-    wav_path = file_path.replace(".webm", ".wav")
+    with open(file_path, "rb") as f:
+        audio_bytes = f.read()
 
-    subprocess.run([
-        "ffmpeg",
-        "-i", file_path,
-        wav_path,
-        "-y"
-    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    result = stt_model.transcribe(
-        wav_path,
-        language="en",
-        task="transcribe",
-        fp16=False
+    response = ElevenLab.speech_to_text.convert(
+        file=audio_bytes,
+        model_id="scribe_v1"
     )
 
-    return result["text"]
+    return response.text
+
 def parse_with_gemini(full_text: str):
     today = datetime.utcnow().strftime("%Y-%m-%d")
 
